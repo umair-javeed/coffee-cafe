@@ -4,6 +4,7 @@ os: linux
 files:
   - source: /
     destination: /var/www/coffee-cafe
+    overwrite: true
 
 hooks:
   BeforeInstall:
