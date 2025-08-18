@@ -1,29 +1,36 @@
 #!/bin/bash
 set -xe
+source "$(dirname "$0")/_common.sh"
 
 APP_DIR="/var/www/coffee-cafe"
-
-# Source shared functions
-. "$(dirname "$0")/_common.sh"
-
-log "Starting after_install step..."
-
 cd "$APP_DIR" || exit 1
 
-# Example: install dependencies
-if command -v npm >/dev/null 2>&1; then
-  log "Installing Node.js dependencies..."
-  npm install --production 2>&1 | tee -a "$LOG_FILE"
-else
-  log "npm not found, skipping dependency installation."
+log "Starting AfterInstall phase..."
+
+# Ensure PATH has common bin dirs
+export PATH=$PATH:/usr/bin:/usr/local/bin
+
+# Install Node.js + npm if missing
+if ! command -v node >/dev/null 2>&1; then
+  log "Installing Node.js..."
+  curl -fsSL https://rpm.nodesource.com/setup_18.x | bash - || curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+  (yum install -y nodejs || apt-get install -y nodejs)
 fi
 
-# Example: restart app using pm2
-if command -v pm2 >/dev/null 2>&1; then
-  log "Restarting app with pm2..."
-  pm2 restart coffee-cafe || pm2 start npm --name coffee-cafe -- start
-else
-  log "pm2 not installed, skipping restart."
+# Install pm2 globally
+if ! command -v pm2 >/dev/null 2>&1; then
+  log "Installing pm2..."
+  npm install -g pm2
 fi
 
-log "after_install step completed successfully."
+# Install dependencies
+if [[ -f package-lock.json ]]; then
+  npm ci
+else
+  npm install
+fi
+
+# Build app
+npm run build
+
+log "AfterInstall completed successfully."
