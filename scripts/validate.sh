@@ -1,16 +1,16 @@
 #!/bin/bash
-set -euo pipefail
+set -xe
 source "$(dirname "$0")/_common.sh"
 
-APP_PORT=3000   # adjust to whatever port your app listens on
+log "ValidateService: Checking app health..."
 
-set +e
-curl -fsS "http://127.0.0.1:${APP_PORT}/health" && ok=1
-set -e
+# Give nginx a few seconds to start
+sleep 5
 
-if [[ "${ok:-0}" -ne 1 ]]; then
+if curl -fsS http://127.0.0.1/index.html >/dev/null; then
+  echo "Health check passed"
+  exit 0
+else
   echo "Health check failed"
   exit 1
 fi
-echo "Health check passed"
-

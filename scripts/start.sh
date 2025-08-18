@@ -2,24 +2,30 @@
 set -xe
 source "$(dirname "$0")/_common.sh"
 
-APP_DIR="/var/www/coffee-cafe"
-cd "$APP_DIR" || exit 1
+log "ApplicationStart: Configuring Nginx..."
 
-log "Starting ApplicationStart phase..."
-
-systemctl daemon-reload || true
-
-# Start Nginx if installed
-if command -v nginx >/dev/null 2>&1; then
-  log "Starting Nginx..."
-  systemctl enable nginx || true
-  systemctl start nginx || true
-else
-  log "Nginx not installed, skipping."
+# Install nginx if missing
+if ! command -v nginx >/dev/null 2>&1; then
+  yum install -y nginx || apt-get install -y nginx
 fi
 
-# Start Node app with pm2 (Node & pm2 already installed in AfterInstall)
-log "Starting Node app with pm2..."
-pm2 restart coffee-cafe || pm2 start npm --name coffee-cafe -- start
+# Nginx config for Vite build
+cat > /etc/nginx/conf.d/coffee-cafe.conf <<'EOL'
+server {
+    listen 80;
+    server_name _;
+
+    root /var/www/coffee-cafe/dist;
+    index index.html;
+
+    location / {
+        try_files $uri /index.html;
+    }
+}
+EOL
+
+# Restart Nginx
+systemctl enable nginx
+systemctl restart nginx
 
 log "ApplicationStart completed successfully."
