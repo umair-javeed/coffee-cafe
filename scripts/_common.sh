@@ -1,11 +1,17 @@
 #!/bin/bash
-set -euo pipefail
+set -xe
 
+# Use a safer log location inside your app folder instead of /var/log
 APP_DIR="/var/www/coffee-cafe"
-REPO_DIR="$(pwd)"                 # CodeDeploy extracts bundle here before copying
-LOG="/var/log/coffee-cafe-deploy.log"
-NGINX_CONF="/etc/nginx/conf.d/coffee-cafe.conf"
+LOG_FILE="$APP_DIR/deploy.log"
 
-exec >>"$LOG" 2>&1
-echo "[$(date -Is)] ----- $0 -----"
-echo "REPO_DIR=$REPO_DIR  APP_DIR=$APP_DIR"
+# Ensure app dir exists
+mkdir -p "$APP_DIR"
+
+# Ensure log file exists and is writable
+touch "$LOG_FILE"
+chmod 666 "$LOG_FILE"
+
+log() {
+  echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}

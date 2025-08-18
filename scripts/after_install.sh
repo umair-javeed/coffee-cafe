@@ -1,36 +1,29 @@
 #!/bin/bash
-set -euo pipefail
-source "$(dirname "$0")/_common.sh"
+set -xe
 
-# Publish built assets: ensure a clean webroot, then copy ./dist
-mkdir -p "$APP_DIR/web"
-rm -rf "$APP_DIR/web"/*
-if [[ -d "$APP_DIR/dist" ]]; then
-  cp -R "$APP_DIR/dist/"* "$APP_DIR/web/"
-elif [[ -d "$APP_DIR/build" ]]; then
-  cp -R "$APP_DIR/build/"* "$APP_DIR/web/"
+APP_DIR="/var/www/coffee-cafe"
+
+# Source shared functions
+. "$(dirname "$0")/_common.sh"
+
+log "Starting after_install step..."
+
+cd "$APP_DIR" || exit 1
+
+# Example: install dependencies
+if command -v npm >/dev/null 2>&1; then
+  log "Installing Node.js dependencies..."
+  npm install --production 2>&1 | tee -a "$LOG_FILE"
 else
-  echo "ERROR: No dist/ (or build/) directory found after build"; exit 1
+  log "npm not found, skipping dependency installation."
 fi
 
-# Nginx server block pointing to /var/www/coffee-cafe/web
-if [[ ! -f "$NGINX_CONF" ]]; then
-  cat > "$NGINX_CONF" <<EOF
-server {
-    listen 80 default_server;
-    server_name _;
-    root $APP_DIR/web;
-    index index.html;
-
-    location / {
-        try_files \$uri /index.html;
-    }
-
-    access_log /var/log/nginx/coffee-cafe.access.log;
-    error_log  /var/log/nginx/coffee-cafe.error.log;
-}
-EOF
+# Example: restart app using pm2
+if command -v pm2 >/dev/null 2>&1; then
+  log "Restarting app with pm2..."
+  pm2 restart coffee-cafe || pm2 start npm --name coffee-cafe -- start
+else
+  log "pm2 not installed, skipping restart."
 fi
 
-# Correct permissions
-chown -R nginx:nginx "$APP_DIR/web" 2>/dev/null || chown -R ec2-user:ec2-user "$APP_DIR/web"
+log "after_install step completed successfully."
